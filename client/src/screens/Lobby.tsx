@@ -1,3 +1,4 @@
+import { ChatBox } from '../components/ChatBox.js';
 import { store } from '../net/useStore.js';
 import type { RoomView } from '../net/types.js';
 
@@ -5,6 +6,7 @@ export function Lobby({ room }: { room: RoomView }) {
   const isHost = room.hostId === room.you;
   const count = room.players.length;
   const canStart = isHost && count >= 4 && count <= 7;
+  const myName = room.players.find((p) => p.id === room.you)?.name ?? '';
 
   return (
     <div className="lobby">
@@ -46,6 +48,11 @@ export function Lobby({ room }: { room: RoomView }) {
         <button className="btn ghost" onClick={() => store.leave()}>
           나가기
         </button>
+
+        <div className="lobby-chat">
+          <h3>채팅</h3>
+          <ChatBox you={myName} className="inline" />
+        </div>
       </div>
     </div>
   );

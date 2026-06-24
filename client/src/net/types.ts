@@ -13,3 +13,10 @@ export interface RoomView {
   players: LobbyPlayerView[];
   you: string;
 }
+
+export interface ChatMessage {
+  id: number;
+  name: string;
+  text: string;
+  ts: number;
+}
