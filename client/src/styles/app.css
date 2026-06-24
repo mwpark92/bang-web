@@ -1,0 +1,246 @@
+:root {
+  --bg: #2b1a10;
+  --bg2: #3b2415;
+  --wood: #5a3a22;
+  --sand: #e8d4a8;
+  --cream: #f5ecd6;
+  --red: #b23a26;
+  --gold: #d8a13a;
+  --ink: #2a1c10;
+  --blue: #2f6f9f;
+  --brown: #9c5a2c;
+  --danger: #b23a26;
+  --green: #3f7d4f;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: radial-gradient(circle at 50% 30%, var(--bg2), var(--bg));
+  color: var(--cream);
+  overscroll-behavior: none;
+}
+
+.app { height: 100%; display: flex; flex-direction: column; }
+
+button { font-family: inherit; cursor: pointer; }
+
+/* ===== 공용 버튼 ===== */
+.btn {
+  border: 2px solid var(--gold);
+  background: var(--wood);
+  color: var(--cream);
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.08s, filter 0.1s;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--red); border-color: var(--gold); }
+.btn.danger { background: var(--danger); border-color: #f3c; border-color: var(--gold); }
+.btn.ghost { background: transparent; border-color: #8886; color: var(--sand); }
+.btn.tiny { padding: 5px 10px; font-size: 0.8rem; border-radius: 7px; }
+
+/* ===== 연결/토스트 ===== */
+.conn-banner {
+  position: fixed; top: 0; left: 0; right: 0;
+  background: #000a; color: var(--gold);
+  text-align: center; padding: 6px; z-index: 100; font-size: 0.85rem;
+}
+.toast {
+  position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: var(--cream);
+  border: 1px solid var(--gold);
+  padding: 10px 18px; border-radius: 10px; z-index: 200;
+  max-width: 90vw; text-align: center; box-shadow: 0 6px 20px #0008;
+}
+
+/* ===== Home / Lobby ===== */
+.home, .lobby {
+  flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.home-card, .lobby-card {
+  background: var(--bg2);
+  border: 3px solid var(--gold);
+  border-radius: 18px;
+  padding: 28px 24px;
+  width: 100%; max-width: 380px;
+  box-shadow: 0 10px 40px #0009;
+  text-align: center;
+}
+.logo {
+  font-size: 3.4rem; margin: 0; letter-spacing: 4px;
+  color: var(--red); text-shadow: 3px 3px 0 var(--gold), 5px 5px 0 #0006;
+  font-weight: 900;
+}
+.subtitle { color: var(--sand); margin: 4px 0 22px; font-size: 0.95rem; }
+.field { display: block; text-align: left; margin: 12px 0; }
+.field span { display: block; font-size: 0.85rem; color: var(--sand); margin-bottom: 6px; }
+.field input {
+  width: 100%; padding: 12px; border-radius: 10px;
+  border: 2px solid var(--wood); background: var(--cream); color: var(--ink);
+  font-size: 1.05rem;
+}
+.btn-col { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.hint { color: #d9c9a3aa; font-size: 0.82rem; margin-top: 16px; }
+
+/* Lobby */
+.room-code { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 16px 0; }
+.room-code .label { color: var(--sand); font-size: 0.85rem; }
+.room-code .code {
+  font-size: 2rem; font-weight: 900; letter-spacing: 6px; color: var(--gold);
+  background: var(--ink); padding: 6px 14px; border-radius: 10px;
+}
+.player-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+.player-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--wood); padding: 10px 14px; border-radius: 10px; text-align: left;
+}
+.player-row.empty { background: #0003; color: #cdbb8f88; justify-content: center; }
+.player-row.offline { opacity: 0.5; }
+.player-row .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+.player-row.offline .dot { background: #888; }
+.player-row .pname { flex: 1; }
+.badge { background: var(--gold); color: var(--ink); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+
+/* ===== Game ===== */
+.game { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 6px; gap: 6px; }
+.topbar {
+  display: flex; align-items: center; gap: 8px; justify-content: space-between;
+  padding: 4px 6px;
+}
+.room-pill, .turn-pill {
+  background: var(--ink); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem;
+  border: 1px solid #ffffff22;
+}
+.turn-pill { background: var(--red); font-weight: 700; }
+
+.opponents {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  padding: 4px;
+}
+.seat {
+  background: var(--bg2); border: 2px solid #00000040; border-radius: 12px;
+  padding: 8px 10px; min-width: 120px; flex: 0 1 auto; transition: border-color 0.15s, transform 0.1s;
+}
+.seat.turn { border-color: var(--gold); box-shadow: 0 0 14px #d8a13a66; }
+.seat.targetable { border-color: var(--red); cursor: pointer; animation: pulse 1s infinite; }
+.seat.targetable:active { transform: scale(0.97); }
+.seat.dead { opacity: 0.45; filter: grayscale(0.7); }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 6px var(--red); } 50% { box-shadow: 0 0 18px var(--red); } }
+.seat-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.seat-name { font-weight: 700; font-size: 0.92rem; }
+.role-tag { font-size: 0.7rem; padding: 1px 6px; border-radius: 5px; background: #0005; }
+.role-sheriff { background: var(--gold); color: var(--ink); }
+.role-deputy { background: var(--blue); }
+.role-outlaw { background: var(--red); }
+.role-renegade { background: #7a4ea0; }
+.dead-tag { background: #555; }
+.health { color: var(--red); font-size: 0.95rem; letter-spacing: 1px; }
+.health-lost { color: #00000055; }
+.seat-hand-count { font-size: 0.78rem; color: var(--sand); margin-top: 2px; }
+.seat-equipment, .my-equipment { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+
+/* 중앙 */
+.center { display: flex; gap: 18px; justify-content: center; align-items: center; padding: 6px; }
+.pile { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pile-count { font-size: 0.72rem; color: var(--sand); }
+
+/* 카드 */
+.card {
+  position: relative;
+  width: 64px; height: 92px; border-radius: 8px;
+  border: 2px solid var(--ink); background: var(--cream); color: var(--ink);
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  padding: 4px; font-size: 0.72rem; font-weight: 700; flex: 0 0 auto;
+  box-shadow: 0 2px 4px #0006; transition: transform 0.1s;
+}
+.card.small { width: 42px; height: 60px; font-size: 0.58rem; border-radius: 6px; }
+.card.brown { background: linear-gradient(160deg, #e7c79a, #d9b07e); border-color: var(--brown); }
+.card.blue { background: linear-gradient(160deg, #bcd9ee, #9cc3e0); border-color: var(--blue); }
+.card.selected { transform: translateY(-12px); border-color: var(--gold); box-shadow: 0 0 14px var(--gold); }
+.card:disabled { cursor: default; }
+.card .corner {
+  position: absolute; top: 3px; left: 4px; font-size: 0.62rem; font-weight: 800;
+}
+.card .corner.red { color: var(--red); }
+.card .corner.black { color: var(--ink); }
+.card-label { margin-top: 8px; line-height: 1.1; }
+.card.back {
+  background: repeating-linear-gradient(45deg, #7a2218, #7a2218 6px, #5a1810 6px, #5a1810 12px);
+  border-color: var(--gold);
+}
+.card.empty-pile { background: #0003; color: #cdbb8f88; border-style: dashed; }
+
+/* 타게팅 바 */
+.targeting-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--red); padding: 8px 14px; border-radius: 10px; font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* 내 영역 */
+.myarea {
+  margin-top: auto; background: #00000035; border-top: 2px solid var(--gold);
+  border-radius: 14px 14px 0 0; padding: 10px; display: flex; flex-direction: column; gap: 8px;
+}
+.myinfo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.myrole { display: flex; align-items: center; gap: 8px; }
+.myrole .role-tag { font-size: 0.85rem; padding: 3px 10px; }
+.mygoal { font-size: 0.8rem; color: var(--sand); flex: 1 1 100%; }
+.hand-row {
+  display: flex; gap: 6px; overflow-x: auto; padding: 8px 2px;
+  scrollbar-width: thin;
+}
+.hand-row .card { transition: transform 0.1s; }
+.actions { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+.actions .warn { color: var(--gold); font-weight: 700; font-size: 0.9rem; }
+
+/* 모달 */
+.modal-overlay {
+  position: fixed; inset: 0; background: #000b; display: flex; align-items: center; justify-content: center;
+  z-index: 300; padding: 18px;
+}
+.modal {
+  background: var(--bg2); border: 3px solid var(--gold); border-radius: 16px;
+  padding: 22px; max-width: 420px; width: 100%; text-align: center;
+  box-shadow: 0 14px 50px #000c; max-height: 90vh; overflow-y: auto;
+}
+.modal h3 { margin-top: 0; }
+.prompt-desc { color: var(--sand); font-size: 0.9rem; }
+.prompt-cards { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0; }
+.modal.win h2 { color: var(--gold); font-size: 1.8rem; }
+.reveal-list { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; }
+.reveal-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--wood); padding: 7px 12px; border-radius: 8px; font-size: 0.9rem; }
+
+/* 로그 */
+.ticker {
+  font-size: 0.78rem; color: var(--sand); text-align: center; padding: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.85;
+}
+.log-panel { position: fixed; inset: 0; background: #000a; z-index: 250; display: flex; justify-content: center; align-items: center; padding: 18px; }
+.log-inner { background: var(--bg2); border: 2px solid var(--gold); border-radius: 14px; padding: 18px; width: 100%; max-width: 460px; max-height: 80vh; display: flex; flex-direction: column; }
+.log-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 4px; margin: 10px 0; }
+.log-line { font-size: 0.85rem; color: var(--cream); border-bottom: 1px solid #ffffff12; padding: 4px 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ===== PC (넓은 화면) ===== */
+@media (min-width: 760px) {
+  .game { padding: 12px 16px; gap: 10px; }
+  .opponents { gap: 14px; }
+  .seat { min-width: 150px; padding: 10px 14px; }
+  .card { width: 74px; height: 106px; font-size: 0.8rem; }
+  .card.small { width: 48px; height: 68px; }
+  .hand-row { justify-content: center; flex-wrap: wrap; overflow-x: visible; }
+  .mygoal { flex: 0 1 auto; }
+  .home-card, .lobby-card { max-width: 420px; }
+}

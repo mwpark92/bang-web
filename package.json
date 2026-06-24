@@ -1,0 +1,27 @@
+{
+  "name": "bang-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "보드게임 Bang!을 웹 브라우저에서 온라인 멀티플레이로 플레이",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace shared",
+    "build:server": "npm run build --workspace server",
+    "build:client": "npm run build --workspace client",
+    "build": "npm run build:shared && npm run build:client && npm run build:server",
+    "dev": "npm run build:shared && concurrently -n server,client -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev --workspace server",
+    "dev:client": "npm run dev --workspace client",
+    "start": "npm run start --workspace server",
+    "test": "npm run test --workspace shared",
+    "typecheck": "tsc -b"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3"
+  }
+}
