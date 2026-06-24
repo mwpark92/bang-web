@@ -49,6 +49,19 @@ npm start          # 서버가 빌드된 클라이언트까지 서빙 (http://lo
 npm test           # 공유 엔진 단위 테스트 (vitest)
 ```
 
+## 배포 (Render 무료 통합 호스팅)
+
+서버가 빌드된 클라이언트까지 함께 서빙하므로 **하나의 무료 웹 서비스**로 배포할 수 있습니다.
+레포에 포함된 `render.yaml` Blueprint를 사용하면 자동 설정됩니다.
+
+1. [Render](https://render.com) 가입 후 **New → Blueprint** 로 이 GitHub 레포 연결
+   - (또는 **New → Web Service** 수동 설정 시: Build `npm ci --include=dev && npm run build`, Start `npm start`)
+2. 인스턴스 타입 **Free** 선택 후 배포
+3. 배포된 URL로 접속해 방을 만들고 코드로 친구를 초대
+
+> 무료 한계: 약 15분간 트래픽이 없으면 잠들고 다음 접속 시 깨어나는 데 수십 초가 걸립니다.
+> 또한 방/게임 상태는 메모리에 있어 서버 재시작 시 초기화됩니다(영속화하려면 추후 Redis/DB 도입 필요).
+
 ## 게임 규칙 (현재 구현 범위)
 
 - **역할** (4~7인): 보안관 · 부관 · 무법자 · 배신자, 인원수별 자동 분배

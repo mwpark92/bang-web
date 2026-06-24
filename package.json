@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "보드게임 Bang!을 웹 브라우저에서 온라인 멀티플레이로 플레이",
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "shared",
     "server",
