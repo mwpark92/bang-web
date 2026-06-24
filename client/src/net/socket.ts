@@ -1,12 +1,13 @@
 import { io, type Socket } from 'socket.io-client';
 import type { ClientView } from 'shared';
-import type { RoomView } from './types.js';
+import type { ChatMessage, RoomView } from './types.js';
 
 export interface AppState {
   connected: boolean;
   room: RoomView | null;
   view: ClientView | null;
   error: string | null;
+  chat: ChatMessage[];
 }
 
 type Listener = () => void;
@@ -37,7 +38,7 @@ export function clearSaved(): void {
 }
 
 class Store {
-  state: AppState = { connected: false, room: null, view: null, error: null };
+  state: AppState = { connected: false, room: null, view: null, error: null, chat: [] };
   private listeners = new Set<Listener>();
   socket: Socket;
 
@@ -61,6 +62,12 @@ class Store {
     this.socket.on('room', (room: RoomView) => this.set({ room }));
     this.socket.on('state', (view: ClientView) => this.set({ view }));
     this.socket.on('error', (msg: string) => this.set({ error: msg }));
+    this.socket.on('chatHistory', (chat: ChatMessage[]) => this.set({ chat }));
+    this.socket.on('chat', (msg: ChatMessage) => {
+      const next = [...this.state.chat, msg];
+      if (next.length > 80) next.shift();
+      this.set({ chat: next });
+    });
   }
 
   subscribe = (fn: Listener): (() => void) => {
@@ -113,7 +120,7 @@ class Store {
 
   leave(): void {
     clearSaved();
-    this.set({ room: null, view: null });
+    this.set({ room: null, view: null, chat: [] });
     // 간단히 새로고침으로 소켓 재연결
     this.socket.disconnect();
     this.socket.connect();
@@ -121,6 +128,12 @@ class Store {
 
   send(action: any): void {
     this.socket.emit('action', action);
+  }
+
+  sendChat(text: string): void {
+    const t = text.trim();
+    if (!t) return;
+    this.socket.emit('chat', { text: t });
   }
 }
 

@@ -5,6 +5,7 @@ import express from 'express';
 import { Server, type Socket } from 'socket.io';
 import { applyAction, redact, type GameAction } from 'shared';
 import {
+  addChat,
   createRoom,
   getRoom,
   handleDisconnect,
@@ -48,6 +49,7 @@ function bind(socket: Socket): void {
     socketInfo.set(socket.id, { code: room.code, playerId });
     cb?.({ ok: true, roomCode: room.code, playerId });
     broadcastRoom(room);
+    socket.emit('chatHistory', room.chat);
   });
 
   socket.on('joinRoom', ({ roomCode, name }: { roomCode: string; name: string }, cb?: (r: any) => void) => {
@@ -56,6 +58,7 @@ function bind(socket: Socket): void {
     socketInfo.set(socket.id, { code: res.room.code, playerId: res.playerId });
     cb?.({ ok: true, roomCode: res.room.code, playerId: res.playerId });
     broadcastRoom(res.room);
+    socket.emit('chatHistory', res.room.chat);
   });
 
   socket.on('rejoin', ({ roomCode, playerId }: { roomCode: string; playerId: string }, cb?: (r: any) => void) => {
@@ -64,6 +67,20 @@ function bind(socket: Socket): void {
     socketInfo.set(socket.id, { code: res.room.code, playerId });
     cb?.({ ok: true, roomCode: res.room.code, playerId });
     broadcastRoom(res.room);
+    socket.emit('chatHistory', res.room.chat);
+  });
+
+  socket.on('chat', ({ text }: { text: string }) => {
+    const info = socketInfo.get(socket.id);
+    const room = info && getRoom(info.code);
+    if (!info || !room) return;
+    const sender = room.players.find((p) => p.id === info.playerId);
+    if (!sender) return;
+    const msg = addChat(room, sender.name, text ?? '');
+    if (!msg) return;
+    for (const p of room.players) {
+      if (p.connected && p.socketId) io.sockets.sockets.get(p.socketId)?.emit('chat', msg);
+    }
   });
 
   socket.on('startGame', (_: unknown, cb?: (r: any) => void) => {

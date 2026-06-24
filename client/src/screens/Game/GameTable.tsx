@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CARD_DEFS, CHARACTERS, type CardName, type ClientView, type PublicPlayer } from 'shared';
 import { Card } from '../../components/Card.js';
+import { ChatBox } from '../../components/ChatBox.js';
 import { ROLE_GOAL, ROLE_LABEL, winnerLabel } from '../../i18n/ko.js';
-import { store } from '../../net/useStore.js';
+import { store, useAppState } from '../../net/useStore.js';
 import type { RoomView } from '../../net/types.js';
 import { DrawPhasePrompt } from './DrawPhasePrompt.js';
 import { PlayerSeat } from './PlayerSeat.js';
@@ -24,8 +25,16 @@ export function GameTable({ room, view }: Props) {
   const [selected, setSelected] = useState<{ cardId: string; name: CardName } | null>(null);
   const [pickFor, setPickFor] = useState<{ cardId: string; targetId: string; target: PublicPlayer } | null>(null);
   const [showLog, setShowLog] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [sidMode, setSidMode] = useState(false);
   const [sidPicks, setSidPicks] = useState<string[]>([]);
+
+  const { chat } = useAppState();
+  const [readCount, setReadCount] = useState(0);
+  const unread = showChat ? 0 : Math.max(0, chat.length - readCount);
+  useEffect(() => {
+    if (showChat) setReadCount(chat.length);
+  }, [showChat, chat.length]);
 
   const myTurn = view.yourTurn;
   const mustDiscard = myTurn && me.hand !== null && me.hand.length > me.health;
@@ -104,6 +113,9 @@ export function GameTable({ room, view }: Props) {
               ? '내 턴'
               : `${view.players.find((p) => p.seat === view.turnSeat)?.name ?? ''}의 턴`}
         </span>
+        <button className="btn tiny" onClick={() => setShowChat((v) => !v)}>
+          채팅{unread > 0 ? ` (${unread})` : ''}
+        </button>
         <button className="btn tiny" onClick={() => setShowLog((v) => !v)}>
           기록
         </button>
@@ -252,6 +264,19 @@ export function GameTable({ room, view }: Props) {
               ))}
             </div>
             <button className="btn ghost" onClick={() => setShowLog(false)}>
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 채팅 패널 */}
+      {showChat && (
+        <div className="log-panel" onClick={() => setShowChat(false)}>
+          <div className="log-inner" onClick={(e) => e.stopPropagation()}>
+            <h3>채팅</h3>
+            <ChatBox you={me.name} className="panel" />
+            <button className="btn ghost" onClick={() => setShowChat(false)}>
               닫기
             </button>
           </div>

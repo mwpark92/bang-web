@@ -7,12 +7,23 @@ export interface LobbyPlayer {
   connected: boolean;
 }
 
+export interface ChatMessage {
+  id: number;
+  name: string;
+  text: string;
+  ts: number;
+}
+
+const CHAT_HISTORY_LIMIT = 60;
+
 export interface Room {
   code: string;
   hostId: string;            // 방장 playerId
   players: LobbyPlayer[];     // 좌석 순서 = 배열 순서
   game: GameState | null;
   lastSeed: number;
+  chat: ChatMessage[];
+  chatSeq: number;
 }
 
 export interface LobbyPlayerView {
@@ -53,6 +64,8 @@ export function createRoom(name: string, socketId: string): { room: Room; player
     players: [{ id: playerId, name: name.trim() || '플레이어', socketId, connected: true }],
     game: null,
     lastSeed: Date.now(),
+    chat: [],
+    chatSeq: 0,
   };
   rooms.set(code, room);
   return { room, playerId };
@@ -139,6 +152,17 @@ export function handleDisconnect(socketId: string): Room[] {
     }
   }
   return affected;
+}
+
+/** 방 채팅에 메시지를 추가하고 생성된 메시지를 반환 (없으면 null) */
+export function addChat(room: Room, name: string, rawText: string): ChatMessage | null {
+  const text = rawText.trim().slice(0, 200);
+  if (!text) return null;
+  room.chatSeq += 1;
+  const msg: ChatMessage = { id: room.chatSeq, name, text, ts: Date.now() };
+  room.chat.push(msg);
+  if (room.chat.length > CHAT_HISTORY_LIMIT) room.chat.shift();
+  return msg;
 }
 
 export function roomView(room: Room, you: string): RoomView {
