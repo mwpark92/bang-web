@@ -27,6 +27,9 @@ export interface Card {
 
 export type Role = 'sheriff' | 'deputy' | 'outlaw' | 'renegade';
 
+import type { CharacterId } from './characters.js';
+export type { CharacterId };
+
 // ===== 플레이어 =====
 
 export interface Player {
@@ -34,6 +37,7 @@ export interface Player {
   name: string;
   seat: number;          // 0..n-1 좌석 순서
   role: Role;
+  character: CharacterId; // 캐릭터(특수능력) — 모두에게 공개
   roleRevealed: boolean; // 보안관은 항상 공개, 나머지는 사망 시 공개
   maxHealth: number;
   health: number;
@@ -55,7 +59,11 @@ export type Pending =
   // 결투: 두 사람이 번갈아 Bang!을 내며, 못 내면 패배(피해)
   | { kind: 'duel'; currentId: string; otherId: string }
   // 잡화점: 펼쳐진 카드 중 순서대로 한 장씩 고름
-  | { kind: 'generalStore'; order: string[]; revealed: Card[] };
+  | { kind: 'generalStore'; order: string[]; revealed: Card[] }
+  // 킷 칼슨: 공개된 3장 중 2장을 가져가고 1장은 덱 위로
+  | { kind: 'drawSelect'; playerId: string; cards: Card[] }
+  // 제시 존스 / 페드로 라미레즈: 첫 카드를 어디서 뽑을지 선택
+  | { kind: 'drawChoice'; playerId: string; character: 'jesseJones' | 'pedroRamirez' };
 
 // ===== 게임 상태 =====
 
@@ -89,6 +97,9 @@ export type GameAction =
   | { type: 'endTurn'; playerId: string }
   | { type: 'discard'; playerId: string; cardId: string }
   | { type: 'generalStorePick'; playerId: string; cardId: string }
+  | { type: 'drawSelect'; playerId: string; putBackId: string } // 킷 칼슨: 덱 위로 되돌릴 1장
+  | { type: 'drawChoice'; playerId: string; source: 'deck' | 'player' | 'discard'; targetId?: string }
+  | { type: 'ability'; playerId: string; cardIds?: string[] }   // 시드 케첨 등 능동 능력
   | { type: 'restart'; playerId: string };
 
 // ===== 클라이언트로 보내는 (가려진) 뷰 =====
@@ -99,6 +110,7 @@ export interface PublicPlayer {
   name: string;
   seat: number;
   role: Role | null;     // 보안관/사망자만 공개, 그 외 null
+  character: CharacterId; // 캐릭터는 모두에게 공개
   isYou: boolean;
   maxHealth: number;
   health: number;

@@ -11,6 +11,7 @@ export function redact(state: GameState, viewerId: string): ClientView {
       name: p.name,
       seat: p.seat,
       role: roleVisible ? p.role : null,
+      character: p.character,
       isYou,
       maxHealth: p.maxHealth,
       health: p.health,
@@ -51,5 +52,7 @@ function isAwaiting(state: GameState, viewerId: string): boolean {
     case 'indians': return pend.remaining[0] === viewerId;
     case 'duel': return pend.currentId === viewerId;
     case 'generalStore': return pend.order[0] === viewerId;
+    case 'drawSelect':
+    case 'drawChoice': return pend.playerId === viewerId;
   }
 }

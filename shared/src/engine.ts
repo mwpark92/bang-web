@@ -5,9 +5,11 @@ import {
   isHeart,
   isWeapon,
 } from './cards.js';
-import { distance, hasEquipment, inWeaponRange } from './distance.js';
+import { ALL_CHARACTERS, CHARACTERS } from './characters.js';
+import { distance, hasBarrel, hasEquipment, inWeaponRange } from './distance.js';
 import type {
   Card,
+  CardName,
   GameAction,
   GameState,
   Player,
@@ -19,8 +21,15 @@ export interface PlayerInit {
   name: string;
 }
 
-const BASE_HEALTH = 4;
 const SHERIFF_BONUS = 1;
+
+// 칼라미티 자넷: 뱅!↔빗나감! 호환
+function actsAsBang(p: Player, name: CardName): boolean {
+  return name === 'bang' || (p.character === 'calamityJanet' && name === 'missed');
+}
+function actsAsMissed(p: Player, name: CardName): boolean {
+  return name === 'missed' || (p.character === 'calamityJanet' && name === 'bang');
+}
 
 // ===== RNG (mulberry32, 결정적) =====
 
@@ -85,14 +94,19 @@ export function createGame(players: PlayerInit[], seed = Date.now()): GameState 
   const roles = roleSetup(players.length);
   shuffle(state, roles);
 
+  const chars = [...ALL_CHARACTERS];
+  shuffle(state, chars);
+
   state.players = players.map((p, seat) => {
     const role = roles[seat];
-    const maxHealth = BASE_HEALTH + (role === 'sheriff' ? SHERIFF_BONUS : 0);
+    const character = chars[seat];
+    const maxHealth = CHARACTERS[character].baseHealth + (role === 'sheriff' ? SHERIFF_BONUS : 0);
     return {
       id: p.id,
       name: p.name,
       seat,
       role,
+      character,
       roleRevealed: role === 'sheriff',
       maxHealth,
       health: maxHealth,
@@ -142,11 +156,34 @@ function draw(state: GameState, p: Player, n: number): void {
   }
 }
 
-/** draw! — 한 장 공개 후 버린 더미로 보냄 */
-function drawBang(state: GameState): Card | null {
-  const c = drawOne(state);
-  if (c) state.discard.push(c);
-  return c;
+/**
+ * draw! — 한 장(럭키 듀크는 2장) 공개 후 버린 더미로 보냄.
+ * prefer(card)가 true인 카드를 우선 선택한다.
+ */
+function drawBang(state: GameState, player: Player, prefer?: (c: Card) => boolean): Card | null {
+  const lucky = player.character === 'luckyDuke';
+  const drawn: Card[] = [];
+  const c1 = drawOne(state);
+  if (c1) drawn.push(c1);
+  if (lucky) {
+    const c2 = drawOne(state);
+    if (c2) drawn.push(c2);
+  }
+  if (drawn.length === 0) return null;
+  let chosen = drawn[0];
+  if (prefer) {
+    const good = drawn.find((c) => prefer(c));
+    if (good) chosen = good;
+  }
+  for (const c of drawn) state.discard.push(c);
+  if (lucky && drawn.length > 1) {
+    log(state, `${player.name}(럭키 듀크)이(가) 뽑기! 2장 중 ${chosen.rank}${suitSym(chosen)}을(를) 선택합니다.`);
+  }
+  return chosen;
+}
+
+function suitSym(c: Card): string {
+  return { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' }[c.suit];
 }
 
 function discardCard(state: GameState, card: Card): void {
@@ -202,6 +239,26 @@ function applyDamage(state: GameState, target: Player, amount: number, sourceId?
 
   if (target.health <= 0) {
     killPlayer(state, target, sourceId);
+    return;
+  }
+
+  // 피해 후 생존 시 캐릭터 트리거
+  // 바트 캐시디: 잃은 체력 1당 카드 1장
+  if (target.character === 'bartCassidy') {
+    draw(state, target, amount);
+    log(state, `${target.name}(바트 캐시디)이(가) 피해로 카드 ${amount}장을 뽑습니다.`);
+  }
+  // 엘 그링고: 가해자의 손패에서 잃은 체력만큼 카드를 가져옴
+  if (target.character === 'elGringo' && sourceId) {
+    const src = byId(state, sourceId);
+    if (src && src.alive && src.id !== target.id) {
+      for (let i = 0; i < amount; i++) {
+        const stolen = takeCardFrom(state, src);
+        if (!stolen) break;
+        target.hand.push(stolen);
+      }
+      log(state, `${target.name}(엘 그링고)이(가) ${src.name}의 카드를 가져옵니다.`);
+    }
   }
 }
 
@@ -211,10 +268,17 @@ function killPlayer(state: GameState, target: Player, sourceId?: string): void {
   target.roleRevealed = true;
   log(state, `${target.name}(${roleLabel(target.role)})이(가) 사망했습니다.`);
 
-  // 손패/장비 전부 버림
-  for (const c of [...target.hand, ...target.equipment]) discardCard(state, c);
+  // 벌처 샘: 사망자의 손패+장비를 모두 가져감 (그 외에는 버림)
+  const sam = state.players.find((p) => p.alive && p.character === 'vultureSam' && p.id !== target.id);
+  const dropped = [...target.hand, ...target.equipment];
   target.hand = [];
   target.equipment = [];
+  if (sam) {
+    sam.hand.push(...dropped);
+    if (dropped.length > 0) log(state, `${sam.name}(벌처 샘)이(가) ${target.name}의 카드를 모두 가져갑니다.`);
+  } else {
+    for (const c of dropped) discardCard(state, c);
+  }
 
   // 보상/벌칙
   const killer = sourceId ? byId(state, sourceId) : undefined;
@@ -277,7 +341,7 @@ function beginTurn(state: GameState): void {
   // 다이너마이트
   const dyn = p.equipment.find((c) => c.name === 'dynamite');
   if (dyn) {
-    const card = drawBang(state);
+    const card = drawBang(state, p, (c) => !isDynamiteExplosion(c));
     if (card && isDynamiteExplosion(card)) {
       p.equipment = p.equipment.filter((c) => c.id !== dyn.id);
       discardCard(state, dyn);
@@ -299,7 +363,7 @@ function beginTurn(state: GameState): void {
   if (jail) {
     p.equipment = p.equipment.filter((c) => c.id !== jail.id);
     discardCard(state, jail);
-    const card = drawBang(state);
+    const card = drawBang(state, p, (c) => isHeart(c));
     if (card && isHeart(card)) {
       log(state, `${p.name}이(가) 감옥에서 탈출했습니다! (${card.rank}♥)`);
     } else {
@@ -309,9 +373,81 @@ function beginTurn(state: GameState): void {
     }
   }
 
-  // 카드 2장 뽑기
+  // 뽑기 단계 (캐릭터별 변형)
+  startDrawPhase(state, p);
+}
+
+/** 뽑기 단계: 캐릭터 능력에 따라 자동 또는 선택 대기 */
+function startDrawPhase(state: GameState, p: Player): void {
+  switch (p.character) {
+    case 'kitCarlson': {
+      const cards: Card[] = [];
+      for (let i = 0; i < 3; i++) {
+        const c = drawOne(state);
+        if (c) cards.push(c);
+      }
+      if (cards.length === 0) { log(state, `${p.name}의 턴 (덱이 비었습니다).`); return; }
+      state.pending = { kind: 'drawSelect', playerId: p.id, cards };
+      log(state, `${p.name}(킷 칼슨)이(가) 3장을 보고 2장을 고릅니다.`);
+      return;
+    }
+    case 'jesseJones': {
+      const others = state.players.some((pl) => pl.alive && pl.id !== p.id && pl.hand.length > 0);
+      if (others) {
+        state.pending = { kind: 'drawChoice', playerId: p.id, character: 'jesseJones' };
+        log(state, `${p.name}(제시 존스)이(가) 뽑을 곳을 선택합니다.`);
+        return;
+      }
+      break;
+    }
+    case 'pedroRamirez': {
+      if (state.discard.length > 0) {
+        state.pending = { kind: 'drawChoice', playerId: p.id, character: 'pedroRamirez' };
+        log(state, `${p.name}(페드로 라미레즈)이(가) 뽑을 곳을 선택합니다.`);
+        return;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  defaultDraw(state, p);
+}
+
+/** 기본 2장 뽑기 (블랙 잭 능력 포함) */
+function defaultDraw(state: GameState, p: Player): void {
+  if (p.character === 'blackJack') {
+    const c1 = drawOne(state);
+    if (c1) p.hand.push(c1);
+    const c2 = drawOne(state);
+    if (c2) {
+      p.hand.push(c2);
+      log(state, `${p.name}(블랙 잭)의 두 번째 카드: ${c2.rank}${suitSym(c2)}`);
+      if (c2.suit === 'hearts' || c2.suit === 'diamonds') {
+        const extra = drawOne(state);
+        if (extra) p.hand.push(extra);
+        log(state, `${p.name}이(가) 붉은 카드로 1장을 더 뽑습니다.`);
+      }
+    }
+    triggerSuzy(state);
+    return;
+  }
   draw(state, p, 2);
   log(state, `${p.name}의 턴: 카드 2장을 뽑았습니다.`);
+  triggerSuzy(state);
+}
+
+/** 수지 라파예트: 손패가 비면 1장을 뽑음 */
+function triggerSuzy(state: GameState): void {
+  for (const p of state.players) {
+    if (p.alive && p.character === 'suzyLafayette' && p.hand.length === 0) {
+      const c = drawOne(state);
+      if (c) {
+        p.hand.push(c);
+        log(state, `${p.name}(수지 라파예트)이(가) 빈 손에 카드 1장을 뽑습니다.`);
+      }
+    }
+  }
 }
 
 function advanceTurn(state: GameState): void {
@@ -344,7 +480,17 @@ export function applyAction(state: GameState, action: GameAction): GameState {
     case 'endTurn':
       handleEndTurn(state, action.playerId);
       break;
+    case 'drawSelect':
+      handleDrawSelect(state, action.playerId, action.putBackId);
+      break;
+    case 'drawChoice':
+      handleDrawChoice(state, action.playerId, action.source, action.targetId);
+      break;
+    case 'ability':
+      handleAbility(state, action.playerId, action.cardIds);
+      break;
   }
+  triggerSuzy(state);
   return state;
 }
 
@@ -373,9 +519,14 @@ function handlePlayCard(
     return;
   }
 
+  // 뱅! (칼라미티 자넷은 빗나감!도 뱅!으로 사용)
+  if (actsAsBang(p, card.name)) {
+    playBang(state, p, card, targetId);
+    return;
+  }
+
   // 갈색 카드
   switch (card.name) {
-    case 'bang': playBang(state, p, card, targetId); break;
     case 'beer': playBeer(state, p, card); break;
     case 'saloon': playSaloon(state, p, card); break;
     case 'stagecoach': playDrawCards(state, p, card, 2); break;
@@ -386,7 +537,7 @@ function handlePlayCard(
     case 'indians': playIndians(state, p, card); break;
     case 'duel': playDuel(state, p, card, targetId); break;
     case 'generalStore': playGeneralStore(state, p, card); break;
-    case 'missed': /* 능동적으로 낼 수 없음 */ break;
+    case 'missed': /* 일반 캐릭터는 능동적으로 낼 수 없음 */ break;
   }
 }
 
@@ -428,14 +579,17 @@ function playBang(state: GameState, p: Player, card: Card, targetId?: string): v
   if (!target || !target.alive || target.id === p.id) return;
   if (!inWeaponRange(state, p, target)) return;
 
-  const volcanic = p.equipment.some((c) => c.name === 'volcanic');
-  if (!volcanic && state.bangsPlayedThisTurn >= 1) return; // 한 턴 1회 제한
+  // 윌리 더 키드 또는 볼캐닉: 무제한
+  const unlimited = p.character === 'willyTheKid' || p.equipment.some((c) => c.name === 'volcanic');
+  if (!unlimited && state.bangsPlayedThisTurn >= 1) return; // 한 턴 1회 제한
 
   removeFromHand(p, card.id);
   discardCard(state, card);
   state.bangsPlayedThisTurn += 1;
   log(state, `${p.name}이(가) ${target.name}에게 뱅!을 발사합니다.`);
-  startBang(state, p.id, target.id, 1);
+  // 슬랩 더 킬러의 뱅!은 빗나감! 2장 필요
+  const misses = p.character === 'slabTheKiller' ? 2 : 1;
+  startBang(state, p.id, target.id, misses);
 }
 
 /** 단일 대상 뱅 해소: 나무통 자동 처리 후 필요 시 pending 설정 */
@@ -443,9 +597,9 @@ function startBang(state: GameState, sourceId: string, targetId: string, misses:
   const target = byId(state, targetId)!;
   let need = misses;
 
-  // 나무통 자동 뽑기
-  if (hasEquipment(target, 'barrel') && need > 0) {
-    const c = drawBang(state);
+  // 나무통(또는 조르도네) 자동 뽑기
+  if (hasBarrel(target) && need > 0) {
+    const c = drawBang(state, target, (x) => isHeart(x));
     if (c && isHeart(c)) {
       need -= 1;
       log(state, `${target.name}의 나무통이 발동! (${c.rank}♥) 빗나감 효과.`);
@@ -539,9 +693,9 @@ function advanceGatling(state: GameState): void {
   while (pend.remaining.length > 0) {
     const target = byId(state, pend.remaining[0]);
     if (!target || !target.alive) { pend.remaining.shift(); continue; }
-    // 나무통 자동
-    if (hasEquipment(target, 'barrel')) {
-      const c = drawBang(state);
+    // 나무통(또는 조르도네) 자동
+    if (hasBarrel(target)) {
+      const c = drawBang(state, target, (x) => isHeart(x));
       if (c && isHeart(c)) {
         log(state, `${target.name}의 나무통이 개틀링을 막았습니다! (${c.rank}♥)`);
         pend.remaining.shift();
@@ -612,7 +766,7 @@ function handleRespond(state: GameState, playerId: string, cardId?: string): voi
     const target = byId(state, pend.targetId)!;
     if (cardId) {
       const c = target.hand.find((x) => x.id === cardId);
-      if (!c || c.name !== 'missed') return;
+      if (!c || !actsAsMissed(target, c.name)) return;
       removeFromHand(target, c.id);
       discardCard(state, c);
       pend.missesNeeded -= 1;
@@ -631,7 +785,7 @@ function handleRespond(state: GameState, playerId: string, cardId?: string): voi
     const target = byId(state, playerId)!;
     if (cardId) {
       const c = target.hand.find((x) => x.id === cardId);
-      if (!c || c.name !== 'missed') return;
+      if (!c || !actsAsMissed(target, c.name)) return;
       removeFromHand(target, c.id);
       discardCard(state, c);
       log(state, `${target.name}이(가) 빗나감!으로 개틀링을 피합니다.`);
@@ -648,7 +802,7 @@ function handleRespond(state: GameState, playerId: string, cardId?: string): voi
     const target = byId(state, playerId)!;
     if (cardId) {
       const c = target.hand.find((x) => x.id === cardId);
-      if (!c || c.name !== 'bang') return;
+      if (!c || !actsAsBang(target, c.name)) return;
       removeFromHand(target, c.id);
       discardCard(state, c);
       log(state, `${target.name}이(가) 뱅!을 버려 인디언을 막습니다.`);
@@ -665,7 +819,7 @@ function handleRespond(state: GameState, playerId: string, cardId?: string): voi
     const cur = byId(state, pend.currentId)!;
     if (cardId) {
       const c = cur.hand.find((x) => x.id === cardId);
-      if (!c || c.name !== 'bang') return;
+      if (!c || !actsAsBang(cur, c.name)) return;
       removeFromHand(cur, c.id);
       discardCard(state, c);
       log(state, `${cur.name}이(가) 결투에서 뱅!을 냅니다.`);
@@ -724,6 +878,83 @@ function handleEndTurn(state: GameState, playerId: string): void {
   }
   log(state, `${p.name}이(가) 턴을 마칩니다.`);
   advanceTurn(state);
+}
+
+// ----- 캐릭터 뽑기 단계 / 능동 능력 -----
+
+/** 킷 칼슨: 3장 중 1장을 덱 위로 되돌리고 나머지를 가져감 */
+function handleDrawSelect(state: GameState, playerId: string, putBackId: string): void {
+  const pend = state.pending;
+  if (!pend || pend.kind !== 'drawSelect' || pend.playerId !== playerId) return;
+  const idx = pend.cards.findIndex((c) => c.id === putBackId);
+  if (idx < 0) return;
+  const [back] = pend.cards.splice(idx, 1);
+  state.deck.push(back); // 덱 맨 위로
+  const p = byId(state, playerId)!;
+  p.hand.push(...pend.cards);
+  log(state, `${p.name}이(가) 2장을 가져가고 1장을 덱 위로 되돌립니다.`);
+  state.pending = null;
+}
+
+/** 제시 존스 / 페드로 라미레즈: 첫 카드 출처 선택 */
+function handleDrawChoice(
+  state: GameState,
+  playerId: string,
+  source: 'deck' | 'player' | 'discard',
+  targetId?: string,
+): void {
+  const pend = state.pending;
+  if (!pend || pend.kind !== 'drawChoice' || pend.playerId !== playerId) return;
+  const p = byId(state, playerId)!;
+
+  if (pend.character === 'jesseJones' && source === 'player' && targetId) {
+    const target = byId(state, targetId);
+    if (target && target.alive && target.id !== p.id && target.hand.length > 0) {
+      const stolen = takeCardFrom(state, target);
+      if (stolen) {
+        p.hand.push(stolen);
+        log(state, `${p.name}(제시 존스)이(가) ${target.name}의 손패에서 1장을 가져옵니다.`);
+      }
+      const c = drawOne(state);
+      if (c) p.hand.push(c);
+      log(state, `${p.name}이(가) 덱에서 1장을 뽑습니다.`);
+      state.pending = null;
+      triggerSuzy(state);
+      return;
+    }
+  }
+
+  if (pend.character === 'pedroRamirez' && source === 'discard' && state.discard.length > 0) {
+    const top = state.discard.pop()!;
+    p.hand.push(top);
+    log(state, `${p.name}(페드로 라미레즈)이(가) 버린 더미에서 ${CARD_DEFS[top.name].label}을(를) 가져옵니다.`);
+    const c = drawOne(state);
+    if (c) p.hand.push(c);
+    log(state, `${p.name}이(가) 덱에서 1장을 뽑습니다.`);
+    state.pending = null;
+    return;
+  }
+
+  // 그 외(덱) — 일반 2장 뽑기
+  state.pending = null;
+  defaultDraw(state, p);
+}
+
+/** 시드 케첨: 손패 2장을 버리고 체력 1 회복 (언제든지) */
+function handleAbility(state: GameState, playerId: string, cardIds?: string[]): void {
+  const p = byId(state, playerId);
+  if (!p || !p.alive) return;
+  if (p.character !== 'sidKetchum') return;
+  if (p.health >= p.maxHealth) return;
+  if (!cardIds || cardIds.length !== 2 || cardIds[0] === cardIds[1]) return;
+  const cards = cardIds.map((id) => p.hand.find((c) => c.id === id));
+  if (cards.some((c) => !c)) return;
+  for (const c of cards) {
+    removeFromHand(p, c!.id);
+    discardCard(state, c!);
+  }
+  p.health += 1;
+  log(state, `${p.name}(시드 케첨)이(가) 카드 2장을 버리고 체력을 1 회복합니다. (체력 ${p.health})`);
 }
 
 // 외부 노출용 헬퍼

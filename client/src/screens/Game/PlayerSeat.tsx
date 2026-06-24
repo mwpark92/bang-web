@@ -1,4 +1,4 @@
-import type { PublicPlayer } from 'shared';
+import { CHARACTERS, type PublicPlayer } from 'shared';
 import { Card } from '../../components/Card.js';
 import { ROLE_LABEL } from '../../i18n/ko.js';
 
@@ -28,6 +28,9 @@ export function PlayerSeat({ player, isTurn, targetable, onTarget }: Props) {
         <span className="seat-name">{player.name}</span>
         {player.role && <span className={`role-tag role-${player.role}`}>{ROLE_LABEL[player.role]}</span>}
         {!player.alive && <span className="role-tag dead-tag">사망</span>}
+      </div>
+      <div className="seat-char" title={CHARACTERS[player.character].ability}>
+        🎭 {CHARACTERS[player.character].name}
       </div>
       <Health p={player} />
       <div className="seat-hand-count">손패 {player.handCount}장</div>
