@@ -1,0 +1,16 @@
+# Render Blueprint — 단일 웹 서비스로 서버+클라이언트 통합 배포
+# https://render.com 에서 New → Blueprint 로 이 레포를 연결하면 자동 적용됩니다.
+services:
+  - type: web
+    name: bang-web
+    runtime: node
+    plan: free
+    # devDependencies(typescript/vite)까지 설치해야 빌드가 가능하므로 --include=dev
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      # Render가 PORT를 주입하지만 명시적으로 Node 버전을 고정
+      - key: NODE_VERSION
+        value: 22.12.0
