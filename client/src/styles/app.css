@@ -148,6 +148,9 @@ button { font-family: inherit; cursor: pointer; }
 .health { color: var(--red); font-size: 0.95rem; letter-spacing: 1px; }
 .health-lost { color: #00000055; }
 .seat-hand-count { font-size: 0.78rem; color: var(--sand); margin-top: 2px; }
+.seat-char { font-size: 0.72rem; color: var(--gold); margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.mychar { font-size: 0.78rem; color: var(--gold); flex: 1 1 100%; line-height: 1.3; }
+.mychar b { color: var(--cream); }
 .seat-equipment, .my-equipment { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
 
 /* 중앙 */

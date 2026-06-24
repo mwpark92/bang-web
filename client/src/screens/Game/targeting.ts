@@ -7,6 +7,13 @@ function hasEq(p: PublicPlayer, name: string): boolean {
   return p.equipment.some((c) => c.name === name);
 }
 
+function hasScope(p: PublicPlayer): boolean {
+  return hasEq(p, 'scope') || p.character === 'roseDoolan';
+}
+function hasMustang(p: PublicPlayer): boolean {
+  return hasEq(p, 'mustang') || p.character === 'paulRegret';
+}
+
 /** 살아있는 플레이어들 사이의 좌석 기본 거리 */
 function baseDistance(players: PublicPlayer[], fromSeat: number, toSeat: number): number {
   const alive = players.filter((p) => p.alive).sort((a, b) => a.seat - b.seat);
@@ -22,8 +29,8 @@ function baseDistance(players: PublicPlayer[], fromSeat: number, toSeat: number)
 /** from이 보는 to까지의 거리 (조준경/머스탱 반영) */
 export function viewDistance(players: PublicPlayer[], from: PublicPlayer, to: PublicPlayer): number {
   let d = baseDistance(players, from.seat, to.seat);
-  if (hasEq(from, 'scope')) d -= 1;
-  if (hasEq(to, 'mustang')) d += 1;
+  if (hasScope(from)) d -= 1;
+  if (hasMustang(to)) d += 1;
   return Math.max(1, d);
 }
 

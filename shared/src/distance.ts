@@ -5,6 +5,21 @@ export function hasEquipment(p: Player, name: string): boolean {
   return p.equipment.some((c) => c.name === name);
 }
 
+/** 조준경 효과 보유 (장비 또는 로즈 둘란) */
+export function hasScope(p: Player): boolean {
+  return hasEquipment(p, 'scope') || p.character === 'roseDoolan';
+}
+
+/** 머스탱 효과 보유 (장비 또는 폴 리그렛) */
+export function hasMustang(p: Player): boolean {
+  return hasEquipment(p, 'mustang') || p.character === 'paulRegret';
+}
+
+/** 나무통 효과 보유 (장비 또는 조르도네) */
+export function hasBarrel(p: Player): boolean {
+  return hasEquipment(p, 'barrel') || p.character === 'jourdonnais';
+}
+
 /** 현재 무기 사거리 (무기 없으면 1) */
 export function weaponRange(p: Player): number {
   let range = 1;
@@ -35,8 +50,8 @@ export function baseDistance(state: GameState, from: Player, to: Player): number
  */
 export function distance(state: GameState, from: Player, to: Player): number {
   let d = baseDistance(state, from, to);
-  if (hasEquipment(from, 'scope')) d -= 1;
-  if (hasEquipment(to, 'mustang')) d += 1;
+  if (hasScope(from)) d -= 1;
+  if (hasMustang(to)) d += 1;
   return Math.max(1, d);
 }
 
