@@ -24,6 +24,8 @@ export interface Room {
   lastSeed: number;
   chat: ChatMessage[];
   chatSeq: number;
+  testMode: boolean;            // 혼자 핫시트 테스트 모드
+  controllerSocketId: string | null; // 테스트 모드에서 모든 좌석을 조작하는 소켓
 }
 
 export interface LobbyPlayerView {
@@ -37,6 +39,7 @@ export interface RoomView {
   code: string;
   hostId: string;
   started: boolean;
+  testMode: boolean;
   players: LobbyPlayerView[];
   you: string;
 }
@@ -66,7 +69,41 @@ export function createRoom(name: string, socketId: string): { room: Room; player
     lastSeed: Date.now(),
     chat: [],
     chatSeq: 0,
+    testMode: false,
+    controllerSocketId: null,
   };
+  rooms.set(code, room);
+  return { room, playerId };
+}
+
+/** 혼자 플레이 테스트 방: 더미 플레이어로 채우고 즉시 게임 시작 */
+export function createTestRoom(
+  name: string,
+  count: number,
+  socketId: string,
+): { room: Room; playerId: string } {
+  const n = Math.min(7, Math.max(4, Math.floor(count) || 4));
+  let code = randomCode();
+  while (rooms.has(code)) code = randomCode();
+  const playerId = randomId();
+  const players: LobbyPlayer[] = [
+    { id: playerId, name: name.trim() || '나', socketId, connected: true },
+  ];
+  for (let i = 1; i < n; i++) {
+    players.push({ id: randomId(), name: `봇${i}`, socketId: null, connected: false });
+  }
+  const room: Room = {
+    code,
+    hostId: playerId,
+    players,
+    game: null,
+    lastSeed: Date.now(),
+    chat: [],
+    chatSeq: 0,
+    testMode: true,
+    controllerSocketId: socketId,
+  };
+  room.game = createGame(players.map((p) => ({ id: p.id, name: p.name })), room.lastSeed);
   rooms.set(code, room);
   return { room, playerId };
 }
@@ -170,6 +207,7 @@ export function roomView(room: Room, you: string): RoomView {
     code: room.code,
     hostId: room.hostId,
     started: !!room.game,
+    testMode: room.testMode,
     players: room.players.map((p) => ({
       id: p.id,
       name: p.name,

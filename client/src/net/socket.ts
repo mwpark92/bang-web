@@ -106,6 +106,16 @@ class Store {
     });
   }
 
+  createTestRoom(name: string, count: number): void {
+    this.socket.emit('createTestRoom', { name, count }, (r: any) => {
+      if (r?.ok) {
+        save({ roomCode: r.roomCode, playerId: r.playerId, name });
+      } else {
+        this.setError(r?.error ?? '테스트 방 생성 실패');
+      }
+    });
+  }
+
   startGame(): void {
     this.socket.emit('startGame', {}, (r: any) => {
       if (!r?.ok) this.setError(r?.error ?? '시작 실패');

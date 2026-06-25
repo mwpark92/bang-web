@@ -959,3 +959,21 @@ function handleAbility(state: GameState, playerId: string, cardIds?: string[]): 
 
 // 외부 노출용 헬퍼
 export { byId, currentPlayer, nameOf };
+
+/** 지금 행동(또는 응답)해야 하는 플레이어의 id */
+export function activePlayerId(state: GameState): string {
+  const pend = state.pending;
+  if (pend) {
+    switch (pend.kind) {
+      case 'bang': return pend.targetId;
+      case 'gatling':
+      case 'indians': return pend.remaining[0] ?? state.players[0].id;
+      case 'duel': return pend.currentId;
+      case 'generalStore': return pend.order[0] ?? state.players[0].id;
+      case 'drawSelect':
+      case 'drawChoice': return pend.playerId;
+    }
+  }
+  const cur = state.players.find((p) => p.seat === state.turnSeat && p.alive);
+  return cur?.id ?? state.players[0].id;
+}
