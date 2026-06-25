@@ -36,6 +36,7 @@ export function GameTable({ room, view }: Props) {
   const [inspectMode, setInspectMode] = useState(false);
   const [sidMode, setSidMode] = useState(false);
   const [sidPicks, setSidPicks] = useState<string[]>([]);
+  const [discardMode, setDiscardMode] = useState(false);
 
   const activeName = view.players.find((p) => p.seat === view.turnSeat)?.name ?? '';
 
@@ -47,19 +48,41 @@ export function GameTable({ room, view }: Props) {
   }, [showChat, chat.length]);
 
   const myTurn = view.yourTurn;
-  const mustDiscard = myTurn && me.hand !== null && me.hand.length > me.health;
+  const handCount = me.hand?.length ?? 0;
+  const overLimit = myTurn && handCount > me.health; // 턴 종료 시 버려야 하는 상태
+  const overBy = Math.max(0, handCount - me.health);
   const targets = selected ? validTargets(view, selected.name) : new Set<string>();
 
   // 시드 케첨 능력 사용 가능 여부
   const canSid =
     me.character === 'sidKetchum' &&
     me.health < me.maxHealth &&
-    (me.hand?.length ?? 0) >= 2 &&
-    !view.pending;
+    handCount >= 2 &&
+    !view.pending &&
+    !discardMode;
+
+  // 내 턴이 끝나면 보조 모드 정리
+  useEffect(() => {
+    if (!myTurn) {
+      setDiscardMode(false);
+      setSidMode(false);
+      setSidPicks([]);
+      setSelected(null);
+    }
+  }, [myTurn]);
 
   const reset = () => {
     setSelected(null);
     setPickFor(null);
+  };
+
+  const endTurnClick = () => {
+    if (overLimit) {
+      setDiscardMode(true);
+      store.setError(`손패 한도 초과: ${overBy}장을 버려야 합니다.`);
+      return;
+    }
+    store.send({ type: 'endTurn' });
   };
 
   const inspectCardByName = (name: CardName) => {
@@ -85,13 +108,13 @@ export function GameTable({ room, view }: Props) {
       });
       return;
     }
-    if (view.pending) return;
-    if (mustDiscard) {
+    if (view.pending || !myTurn) return;
+    // 버리기 모드: 명시적으로 버릴 때만 버린 더미로
+    if (discardMode) {
       store.send({ type: 'discard', cardId });
       return;
     }
-    if (!myTurn) return;
-    // 칼라미티 자넷: 빗나감!을 뱅!처럼 사용
+    // 사용(play) — 칼라미티 자넷은 빗나감!을 뱅!처럼 사용
     const effName: CardName = name === 'missed' && me.character === 'calamityJanet' ? 'bang' : name;
     if (TARGETED_CARDS.has(effName)) {
       setSelected({ cardId, name: effName });
@@ -239,13 +262,20 @@ export function GameTable({ room, view }: Props) {
           </div>
         )}
 
-        <div className="hand-row">
+        {discardMode && (
+          <div className="targeting-bar discard-bar">
+            <span>🗑️ 버리기 — 버릴 카드를 누르세요{overLimit ? ` (한도까지 ${overBy}장)` : ''}</span>
+            <button className="btn tiny ghost" onClick={() => setDiscardMode(false)}>완료</button>
+          </div>
+        )}
+
+        <div className={`hand-row ${discardMode ? 'discarding' : ''}`}>
           {(me.hand ?? []).map((c) => (
             <Card
               key={c.id}
               card={c}
               selected={selected?.cardId === c.id || sidPicks.includes(c.id)}
-              disabled={!inspectMode && !myTurn && !mustDiscard && !sidMode}
+              disabled={!inspectMode && !sidMode && !(myTurn && !view.pending)}
               onClick={() => onHandCard(c.id, c.name)}
             />
           ))}
@@ -253,17 +283,27 @@ export function GameTable({ room, view }: Props) {
         </div>
 
         <div className="actions">
-          {mustDiscard && <span className="warn">손패 한도 초과! {me.hand!.length - me.health}장을 버리세요.</span>}
+          {overLimit && !discardMode && (
+            <span className="warn">손패 {overBy}장 초과 — 턴 종료하려면 버려야 합니다.</span>
+          )}
           <button className="btn tiny ghost" onClick={() => setInspectMode((v) => !v)}>
             {inspectMode ? '설명 끄기' : '🔍 카드 설명'}
           </button>
+          {myTurn && !sidMode && !inspectMode && handCount > 0 && (
+            <button
+              className={`btn tiny ${discardMode ? 'primary' : 'ghost'}`}
+              onClick={() => setDiscardMode((v) => !v)}
+            >
+              {discardMode ? '버리기 끝' : '🗑️ 버리기'}
+            </button>
+          )}
           {canSid && !sidMode && (
             <button className="btn" onClick={() => { setSidMode(true); setSidPicks([]); }}>
               능력: 2장 버리고 회복
             </button>
           )}
-          {myTurn && !mustDiscard && !sidMode && (
-            <button className="btn primary" onClick={() => store.send({ type: 'endTurn' })}>
+          {myTurn && !sidMode && !discardMode && (
+            <button className="btn primary" onClick={endTurnClick}>
               턴 종료
             </button>
           )}
