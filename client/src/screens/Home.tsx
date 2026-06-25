@@ -5,6 +5,7 @@ export function Home() {
   const [name, setName] = useState(() => localStorage.getItem('bang_name') ?? '');
   const [code, setCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'join'>('menu');
+  const [testCount, setTestCount] = useState(4);
 
   const remember = (n: string) => {
     setName(n);
@@ -64,6 +65,27 @@ export function Home() {
         )}
 
         <p className="hint">4~7명이 모이면 방장이 게임을 시작합니다.</p>
+
+        {mode === 'menu' && (
+          <div className="test-mode">
+            <span className="hint">🧪 혼자 연습 (테스트 모드)</span>
+            <div className="test-row">
+              <select value={testCount} onChange={(e) => setTestCount(Number(e.target.value))}>
+                {[4, 5, 6, 7].map((n) => (
+                  <option key={n} value={n}>{n}인</option>
+                ))}
+              </select>
+              <button
+                className="btn"
+                disabled={!canPlay}
+                onClick={() => store.createTestRoom(name.trim(), testCount)}
+              >
+                혼자 시작
+              </button>
+            </div>
+            <span className="hint">모든 좌석을 번갈아 조작하며 규칙을 익힐 수 있어요.</span>
+          </div>
+        )}
       </div>
     </div>
   );

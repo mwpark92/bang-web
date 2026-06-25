@@ -1,9 +1,10 @@
+import type { MouseEvent } from 'react';
 import { CARD_DEFS, type Card as CardT } from 'shared';
 import { SUIT_RED, SUIT_SYMBOL } from '../i18n/ko.js';
 
 interface Props {
   card: CardT;
-  onClick?: () => void;
+  onClick?: (e: MouseEvent) => void;
   selected?: boolean;
   disabled?: boolean;
   small?: boolean;

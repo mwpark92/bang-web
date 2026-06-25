@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react';
 import { CARD_DEFS, CHARACTERS, type CardName, type ClientView, type PublicPlayer } from 'shared';
 import { Card } from '../../components/Card.js';
 import { ChatBox } from '../../components/ChatBox.js';
+import { ChatToasts } from '../../components/ChatToasts.js';
+import { Codex } from '../../components/Codex.js';
+import { InspectModal } from '../../components/InspectModal.js';
 import { ROLE_GOAL, ROLE_LABEL, winnerLabel } from '../../i18n/ko.js';
 import { store, useAppState } from '../../net/useStore.js';
 import type { RoomView } from '../../net/types.js';
 import { DrawPhasePrompt } from './DrawPhasePrompt.js';
-import { PlayerSeat } from './PlayerSeat.js';
+import { PlayerSeat, type InspectPayload } from './PlayerSeat.js';
 import { ResponsePrompt } from './ResponsePrompt.js';
-import { CARD_PICK_CARDS, TARGETED_CARDS, validTargets } from './targeting.js';
+import { CARD_PICK_CARDS, TARGETED_CARDS, validTargets, viewDistance } from './targeting.js';
 
 interface Props {
   room: RoomView;
@@ -17,17 +20,24 @@ interface Props {
 
 export function GameTable({ room, view }: Props) {
   const me = view.players.find((p) => p.isYou)!;
+  const n = view.players.length;
+  // 나를 기준으로 시계방향 정렬 (내 다음 좌석부터)
   const others = view.players
     .filter((p) => !p.isYou)
-    .sort((a, b) => a.seat - b.seat);
+    .sort((a, b) => ((a.seat - me.seat + n) % n) - ((b.seat - me.seat + n) % n));
 
   // 카드 선택/타게팅 상태
   const [selected, setSelected] = useState<{ cardId: string; name: CardName } | null>(null);
   const [pickFor, setPickFor] = useState<{ cardId: string; targetId: string; target: PublicPlayer } | null>(null);
   const [showLog, setShowLog] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showCodex, setShowCodex] = useState(false);
+  const [inspect, setInspect] = useState<InspectPayload | null>(null);
+  const [inspectMode, setInspectMode] = useState(false);
   const [sidMode, setSidMode] = useState(false);
   const [sidPicks, setSidPicks] = useState<string[]>([]);
+
+  const activeName = view.players.find((p) => p.seat === view.turnSeat)?.name ?? '';
 
   const { chat } = useAppState();
   const [readCount, setReadCount] = useState(0);
@@ -52,7 +62,16 @@ export function GameTable({ room, view }: Props) {
     setPickFor(null);
   };
 
+  const inspectCardByName = (name: CardName) => {
+    setInspect({ title: CARD_DEFS[name].label, subtitle: '카드 설명', body: CARD_DEFS[name].desc });
+  };
+
   const onHandCard = (cardId: string, name: CardName) => {
+    // 설명 보기 모드: 사용하지 않고 카드 능력만 표시
+    if (inspectMode) {
+      inspectCardByName(name);
+      return;
+    }
     // 시드 케첨: 버릴 카드 2장 선택
     if (sidMode) {
       setSidPicks((prev) => {
@@ -113,6 +132,9 @@ export function GameTable({ room, view }: Props) {
               ? '내 턴'
               : `${view.players.find((p) => p.seat === view.turnSeat)?.name ?? ''}의 턴`}
         </span>
+        <button className="btn tiny" onClick={() => setShowCodex(true)}>
+          도움말
+        </button>
         <button className="btn tiny" onClick={() => setShowChat((v) => !v)}>
           채팅{unread > 0 ? ` (${unread})` : ''}
         </button>
@@ -121,7 +143,11 @@ export function GameTable({ room, view }: Props) {
         </button>
       </div>
 
-      {/* 상대 좌석 */}
+      {room.testMode && (
+        <div className="test-banner">🧪 테스트 모드 — 지금은 <b>{activeName}</b>의 차례 (모든 좌석을 직접 조작)</div>
+      )}
+
+      {/* 상대 좌석 (나 기준 시계방향) */}
       <div className="opponents">
         {others.map((p) => (
           <PlayerSeat
@@ -129,7 +155,9 @@ export function GameTable({ room, view }: Props) {
             player={p}
             isTurn={p.seat === view.turnSeat}
             targetable={!!selected && targets.has(p.id)}
+            posLabel={p.alive ? `거리 ${viewDistance(view.players, me, p)}` : undefined}
             onTarget={() => onTargetPlayer(p)}
+            onInspect={setInspect}
           />
         ))}
       </div>
@@ -164,23 +192,32 @@ export function GameTable({ room, view }: Props) {
       )}
 
       {/* 내 정보 + 손패 */}
-      <div className="myarea">
+      <div className={`myarea ${myTurn ? 'my-turn' : ''}`}>
         <div className="myinfo">
           <div className="myrole">
+            <span className="me-badge">👤 나 · 좌석 {me.seat + 1}</span>
             <span className={`role-tag role-${me.role}`}>{me.role ? ROLE_LABEL[me.role] : '?'}</span>
             <span className="health">
               {'❤'.repeat(Math.max(0, me.health))}
               <span className="health-lost">{'♡'.repeat(Math.max(0, me.maxHealth - me.health))}</span>
             </span>
           </div>
-          <div className="mychar" title={CHARACTERS[me.character].ability}>
-            🎭 <b>{CHARACTERS[me.character].name}</b> — {CHARACTERS[me.character].ability}
-          </div>
+          <button
+            className="mychar tappable"
+            onClick={() => setInspect({ title: CHARACTERS[me.character].name, subtitle: `내 캐릭터 · 체력 ${CHARACTERS[me.character].baseHealth}`, body: CHARACTERS[me.character].ability })}
+          >
+            🎭 <b>{CHARACTERS[me.character].name}</b> — {CHARACTERS[me.character].ability} <span className="info-dot">ⓘ</span>
+          </button>
           <div className="mygoal">{me.role ? ROLE_GOAL[me.role] : ''}</div>
           {me.equipment.length > 0 && (
             <div className="my-equipment">
               {me.equipment.map((c) => (
-                <Card key={c.id} card={c} small disabled />
+                <Card
+                  key={c.id}
+                  card={c}
+                  small
+                  onClick={() => setInspect({ title: CARD_DEFS[c.name].label, subtitle: '내 장비 효과', body: CARD_DEFS[c.name].desc })}
+                />
               ))}
             </div>
           )}
@@ -195,13 +232,20 @@ export function GameTable({ room, view }: Props) {
           </div>
         )}
 
+        {inspectMode && (
+          <div className="targeting-bar info">
+            <span>🔍 설명 보기 — 카드를 누르면 효과가 표시됩니다 (사용 안 됨)</span>
+            <button className="btn tiny ghost" onClick={() => setInspectMode(false)}>완료</button>
+          </div>
+        )}
+
         <div className="hand-row">
           {(me.hand ?? []).map((c) => (
             <Card
               key={c.id}
               card={c}
               selected={selected?.cardId === c.id || sidPicks.includes(c.id)}
-              disabled={!myTurn && !mustDiscard && !sidMode}
+              disabled={!inspectMode && !myTurn && !mustDiscard && !sidMode}
               onClick={() => onHandCard(c.id, c.name)}
             />
           ))}
@@ -210,6 +254,9 @@ export function GameTable({ room, view }: Props) {
 
         <div className="actions">
           {mustDiscard && <span className="warn">손패 한도 초과! {me.hand!.length - me.health}장을 버리세요.</span>}
+          <button className="btn tiny ghost" onClick={() => setInspectMode((v) => !v)}>
+            {inspectMode ? '설명 끄기' : '🔍 카드 설명'}
+          </button>
           {canSid && !sidMode && (
             <button className="btn" onClick={() => { setSidMode(true); setSidPicks([]); }}>
               능력: 2장 버리고 회복
@@ -222,6 +269,13 @@ export function GameTable({ room, view }: Props) {
           )}
         </div>
       </div>
+
+      {/* 게임 중 채팅 토스트 */}
+      <ChatToasts />
+
+      {/* 설명 모달 / 도움말 */}
+      {inspect && <InspectModal {...inspect} onClose={() => setInspect(null)} />}
+      {showCodex && <Codex onClose={() => setShowCodex(false)} />}
 
       {/* 반응 프롬프트 */}
       <ResponsePrompt view={view} />

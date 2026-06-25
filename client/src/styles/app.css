@@ -257,6 +257,73 @@ button { font-family: inherit; cursor: pointer; }
 .lobby-chat { margin-top: 16px; text-align: left; }
 .lobby-chat h3 { margin: 0 0 8px; }
 
+/* ===== 모바일 피드백 개선 ===== */
+/* 좌석 위치/탭 인스펙트 */
+.seat-pos { font-size: 0.66rem; background: #0006; color: var(--sand); padding: 1px 6px; border-radius: 6px; }
+.seat-char.tappable, .mychar.tappable {
+  background: none; border: none; color: var(--gold); cursor: pointer; text-align: left;
+  padding: 2px 0; font: inherit;
+}
+.mychar.tappable { font-size: 0.78rem; line-height: 1.3; }
+.info-dot { color: var(--sand); font-size: 0.72rem; }
+
+/* 내 위치 강조 */
+.me-badge {
+  background: var(--gold); color: var(--ink); font-weight: 800;
+  padding: 3px 10px; border-radius: 8px; font-size: 0.82rem;
+}
+.myarea.my-turn { box-shadow: 0 -3px 22px #d8a13a55; border-top-color: var(--gold); }
+
+/* 테스트 모드 배너 */
+.test-banner {
+  background: #2f6f9f; color: #fff; text-align: center; font-size: 0.82rem;
+  padding: 6px 10px; border-radius: 8px; margin: 0 4px;
+}
+.test-banner b { color: var(--gold); }
+
+/* 홈 테스트 모드 박스 */
+.test-mode { margin-top: 14px; border-top: 1px dashed #ffffff33; padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.test-row { display: flex; gap: 8px; align-items: stretch; }
+.test-row select {
+  flex: 0 0 auto; padding: 0 12px; border-radius: 10px; border: 2px solid var(--wood);
+  background: var(--cream); color: var(--ink); font-size: 1rem;
+}
+.test-row .btn { flex: 1; }
+
+/* 인스펙트 모달 */
+.modal.inspect { max-width: 340px; }
+.inspect-sub { color: var(--gold); font-size: 0.82rem; margin-bottom: 8px; }
+.inspect-body { color: var(--cream); line-height: 1.5; }
+.targeting-bar.info { background: #2f6f9f; }
+
+/* 도움말(코덱스) */
+.log-inner.codex { max-width: 520px; }
+.codex-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+.codex-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.codex-row { display: flex; gap: 10px; align-items: flex-start; background: #0003; padding: 8px 10px; border-radius: 8px; }
+.codex-tag {
+  flex: 0 0 88px; font-size: 0.8rem; font-weight: 700; padding: 3px 6px; border-radius: 6px; text-align: center;
+  color: var(--ink);
+}
+.codex-tag.brown { background: #d9b07e; }
+.codex-tag.blue { background: #9cc3e0; }
+.codex-tag.char { background: var(--gold); }
+.codex-desc { font-size: 0.84rem; color: var(--cream); line-height: 1.4; }
+
+/* 게임 중 채팅 토스트 */
+.chat-toasts {
+  position: fixed; left: 8px; bottom: 90px; z-index: 240;
+  display: flex; flex-direction: column; gap: 6px; max-width: 70vw; pointer-events: none;
+}
+.chat-toast {
+  background: #000b; border: 1px solid var(--gold); border-radius: 12px;
+  padding: 6px 12px; font-size: 0.85rem; box-shadow: 0 4px 14px #0008;
+  animation: toastIn 0.2s ease;
+}
+.chat-toast .chat-name { color: var(--gold); font-weight: 700; margin-right: 6px; }
+.chat-toast .chat-text { color: var(--cream); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
 /* ===== PC (넓은 화면) ===== */
 @media (min-width: 760px) {
   .game { padding: 12px 16px; gap: 10px; }

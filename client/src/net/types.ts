@@ -10,6 +10,7 @@ export interface RoomView {
   code: string;
   hostId: string;
   started: boolean;
+  testMode: boolean;
   players: LobbyPlayerView[];
   you: string;
 }

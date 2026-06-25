@@ -3,10 +3,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { Server, type Socket } from 'socket.io';
-import { applyAction, redact, type GameAction } from 'shared';
+import { activePlayerId, applyAction, redact, type GameAction } from 'shared';
 import {
   addChat,
   createRoom,
+  createTestRoom,
   getRoom,
   handleDisconnect,
   joinRoom,
@@ -32,6 +33,14 @@ const socketInfo = new Map<string, { code: string; playerId: string }>();
 // ===== 브로드캐스트 =====
 
 function broadcastRoom(room: Room): void {
+  // 테스트 모드: 단일 컨트롤러에게 "지금 행동할 플레이어" 시점의 뷰를 전송
+  if (room.testMode) {
+    const sock = room.controllerSocketId && io.sockets.sockets.get(room.controllerSocketId);
+    if (!sock) return;
+    sock.emit('room', roomView(room, room.hostId));
+    if (room.game) sock.emit('state', redact(room.game, activePlayerId(room.game)));
+    return;
+  }
   for (const p of room.players) {
     if (!p.connected || !p.socketId) continue;
     const sock = io.sockets.sockets.get(p.socketId);
@@ -52,6 +61,13 @@ function bind(socket: Socket): void {
     socket.emit('chatHistory', room.chat);
   });
 
+  socket.on('createTestRoom', ({ name, count }: { name: string; count: number }, cb?: (r: any) => void) => {
+    const { room, playerId } = createTestRoom(name, count, socket.id);
+    socketInfo.set(socket.id, { code: room.code, playerId });
+    cb?.({ ok: true, roomCode: room.code, playerId });
+    broadcastRoom(room);
+  });
+
   socket.on('joinRoom', ({ roomCode, name }: { roomCode: string; name: string }, cb?: (r: any) => void) => {
     const res = joinRoom(roomCode, name, socket.id);
     if ('error' in res) { cb?.({ ok: false, error: res.error }); return; }
@@ -65,6 +81,7 @@ function bind(socket: Socket): void {
     const res = rejoin(roomCode, playerId, socket.id);
     if ('error' in res) { cb?.({ ok: false, error: res.error }); return; }
     socketInfo.set(socket.id, { code: res.room.code, playerId });
+    if (res.room.testMode) res.room.controllerSocketId = socket.id;
     cb?.({ ok: true, roomCode: res.room.code, playerId });
     broadcastRoom(res.room);
     socket.emit('chatHistory', res.room.chat);
@@ -107,8 +124,9 @@ function bind(socket: Socket): void {
     const info = socketInfo.get(socket.id);
     const room = info && getRoom(info.code);
     if (!info || !room || !room.game) return;
-    // 보안: 액션의 playerId를 소켓 소유자로 강제
-    const safeAction = { ...action, playerId: info.playerId } as GameAction;
+    // 일반: 소켓 소유자로 강제 / 테스트 모드: 지금 행동할 플레이어로 적용(핫시트)
+    const pid = room.testMode ? activePlayerId(room.game) : info.playerId;
+    const safeAction = { ...action, playerId: pid } as GameAction;
     applyAction(room.game, safeAction);
     broadcastRoom(room);
   });
