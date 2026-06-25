@@ -34,7 +34,7 @@ export const CARD_DEFS: Record<CardName, CardDef> = {
   scope:       { name: 'scope', label: '조준경', category: 'blue', desc: '내가 보는 다른 사람과의 거리가 1 줄어든다.' },
   barrel:      { name: 'barrel', label: '나무통', category: 'blue', desc: '뱅!을 맞을 때 뽑기로 하트가 나오면 빗나감! 효과.' },
   jail:        { name: 'jail', label: '감옥', category: 'blue', desc: '대상에게 채운다. 자기 턴에 뽑기로 하트가 나와야 행동 가능.' },
-  dynamite:    { name: 'dynamite', label: '다이너마이트', category: 'blue', desc: '매 턴 뽑기로 스페이드 2~9면 폭발해 3 피해. 아니면 옆으로 넘어간다.' },
+  dynamite:    { name: 'dynamite', label: '다이너마이트', category: 'blue', desc: '내 앞에 놓는다(대상 지정 없음). 매 턴 시작 시 뽑기로 스페이드 2~9가 나오면 폭발해 3 피해, 아니면 시계방향 옆 사람에게 넘어간다.' },
 };
 
 /** 무기 사거리 (무기 없으면 1) */
