@@ -6,6 +6,7 @@ export function Home() {
   const [code, setCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'join'>('menu');
   const [testCount, setTestCount] = useState(4);
+  const [testPw, setTestPw] = useState('');
 
   const remember = (n: string) => {
     setName(n);
@@ -68,22 +69,32 @@ export function Home() {
 
         {mode === 'menu' && (
           <div className="test-mode">
-            <span className="hint">🧪 혼자 연습 (테스트 모드)</span>
+            <span className="hint">🔒 관리자 전용 · 혼자 연습 (테스트 모드)</span>
             <div className="test-row">
               <select value={testCount} onChange={(e) => setTestCount(Number(e.target.value))}>
                 {[4, 5, 6, 7].map((n) => (
                   <option key={n} value={n}>{n}인</option>
                 ))}
               </select>
+              <input
+                type="password"
+                inputMode="numeric"
+                value={testPw}
+                placeholder="비밀번호"
+                onChange={(e) => setTestPw(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && canPlay && testPw) store.createTestRoom(name.trim(), testCount, testPw);
+                }}
+              />
               <button
                 className="btn"
-                disabled={!canPlay}
-                onClick={() => store.createTestRoom(name.trim(), testCount)}
+                disabled={!canPlay || !testPw}
+                onClick={() => store.createTestRoom(name.trim(), testCount, testPw)}
               >
                 혼자 시작
               </button>
             </div>
-            <span className="hint">모든 좌석을 번갈아 조작하며 규칙을 익힐 수 있어요.</span>
+            <span className="hint">관리자 비밀번호가 필요합니다.</span>
           </div>
         )}
       </div>
