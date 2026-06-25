@@ -295,6 +295,9 @@ button { font-family: inherit; cursor: pointer; }
 .inspect-sub { color: var(--gold); font-size: 0.82rem; margin-bottom: 8px; }
 .inspect-body { color: var(--cream); line-height: 1.5; }
 .targeting-bar.info { background: #2f6f9f; }
+.targeting-bar.discard-bar { background: #7a3b2a; }
+.hand-row.discarding .card:not(:disabled) { box-shadow: 0 0 0 2px var(--danger); }
+.hand-row.discarding .card:not(:disabled):active { background: #e0a; }
 
 /* 도움말(코덱스) */
 .log-inner.codex { max-width: 520px; }
