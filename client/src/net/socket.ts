@@ -106,8 +106,8 @@ class Store {
     });
   }
 
-  createTestRoom(name: string, count: number): void {
-    this.socket.emit('createTestRoom', { name, count }, (r: any) => {
+  createTestRoom(name: string, count: number, password: string): void {
+    this.socket.emit('createTestRoom', { name, count, password }, (r: any) => {
       if (r?.ok) {
         save({ roomCode: r.roomCode, playerId: r.playerId, name });
       } else {

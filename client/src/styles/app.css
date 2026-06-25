@@ -283,12 +283,16 @@ button { font-family: inherit; cursor: pointer; }
 
 /* 홈 테스트 모드 박스 */
 .test-mode { margin-top: 14px; border-top: 1px dashed #ffffff33; padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-.test-row { display: flex; gap: 8px; align-items: stretch; }
+.test-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
 .test-row select {
   flex: 0 0 auto; padding: 0 12px; border-radius: 10px; border: 2px solid var(--wood);
   background: var(--cream); color: var(--ink); font-size: 1rem;
 }
-.test-row .btn { flex: 1; }
+.test-row input {
+  flex: 1 1 90px; min-width: 80px; padding: 10px; border-radius: 10px;
+  border: 2px solid var(--wood); background: var(--cream); color: var(--ink); font-size: 1rem;
+}
+.test-row .btn { flex: 1 1 100px; }
 
 /* 인스펙트 모달 */
 .modal.inspect { max-width: 340px; }

@@ -20,6 +20,8 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3001;
+// 테스트(혼자 플레이) 모드 접근 비밀번호 — 환경변수로 변경 가능, 기본 4321
+const TEST_MODE_PASSWORD = process.env.TEST_MODE_PASSWORD || '4321';
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,7 +63,11 @@ function bind(socket: Socket): void {
     socket.emit('chatHistory', room.chat);
   });
 
-  socket.on('createTestRoom', ({ name, count }: { name: string; count: number }, cb?: (r: any) => void) => {
+  socket.on('createTestRoom', ({ name, count, password }: { name: string; count: number; password?: string }, cb?: (r: any) => void) => {
+    if ((password ?? '') !== TEST_MODE_PASSWORD) {
+      cb?.({ ok: false, error: '비밀번호가 올바르지 않습니다.' });
+      return;
+    }
     const { room, playerId } = createTestRoom(name, count, socket.id);
     socketInfo.set(socket.id, { code: room.code, playerId });
     cb?.({ ok: true, roomCode: room.code, playerId });
